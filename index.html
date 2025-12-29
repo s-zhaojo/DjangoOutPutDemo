@@ -1,141 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Reservoir Sedimentation Demo 🌊🏞️</title>
-    <!-- Plotly -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1, h2 { color: #1f77b4; }
-        #map { height: 500px; margin-top: 20px; }
-        .plot-container { margin-top: 30px; }
-    </style>
+<meta charset="UTF-8">
+<title>Reservoir Sedimentation Demo </title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1, h2 { color: #1f77b4; }
+    .plot-container { margin-top: 30px; }
+    #map { height: 500px; margin-top: 20px; }
+    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #1f77b4; color: white; }
+    .metrics span { font-weight: bold; font-size: 1.1em; }
+</style>
 </head>
 <body>
-    <h1>Reservoir Sedimentation Visualization Demo 🌊🏞️</h1>
 
-    <!-- 3D Reservoir Surface -->
-    <h2>3D Reservoir Sedimentation Over Time (Interactive)</h2>
-    <input type="range" id="yearSlider" min="2000" max="2024" value="2000">
-    <span id="yearLabel">2000</span>
-    <div id="surface3d" class="plot-container" style="height:600px;"></div>
+<h1>Reservoir Sedimentation Visualization Demo 🌊🏞️</h1>
 
-    <!-- Static Metrics -->
-    <h2>Sedimentation Metrics</h2>
+<h2>3D Reservoir Surface Over Time</h2>
+<input type="range" id="yearSlider" min="2000" max="2024" value="2000">
+<span id="yearLabel">2000</span>
+<div id="surface3d" class="plot-container" style="height:600px;"></div>
+
+<h2>Current Metrics</h2>
+<div class="metrics">
     <p>Cumulative Loss (%): <span id="cumLoss">0.00</span></p>
     <p>Remaining Volume (%): <span id="remVol">100.00</span></p>
+</div>
 
-    <!-- 2D Plots -->
-    <h2>Cumulative Capacity Loss Over Time</h2>
-    <div id="linePlotLoss" class="plot-container" style="height:400px;"></div>
+<h2>3D Sedimentation Loss by Depth Layers</h2>
+<input type="range" id="depthSlider" min="0" max="24" value="0">
+<span id="depthYear">2000</span>
+<div id="lossSurface" style="height:600px;"></div>
 
-    <h2>Remaining Capacity Over Time</h2>
-    <div id="linePlotRemaining" class="plot-container" style="height:400px;"></div>
+<h2>3D Cumulative Sedimentation per Year</h2>
+<div id="bar3D" style="height:600px;"></div>
 
-    <!-- Map -->
-    <h2>Reservoir Location Map</h2>
-    <div id="map"></div>
+<h2>Cumulative Capacity Loss Over Time</h2>
+<div id="linePlotLoss" class="plot-container" style="height:400px;"></div>
 
-    <!-- Table -->
-    <h2>Sedimentation Data Table</h2>
-    <table border="1" cellpadding="5" cellspacing="0" id="dataTable">
-        <thead>
-            <tr><th>Year</th><th>Cumulative Loss (%)</th><th>Remaining Capacity (million m³)</th></tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<h2>Remaining Capacity Over Time</h2>
+<div id="linePlotRemaining" class="plot-container" style="height:400px;"></div>
 
-    <script>
-        // ===========================
-        // Simulated Reservoir Data
-        // ===========================
-        const years = Array.from({length: 25}, (_, i) => 2000 + i);
-        const sedimentationRate = 0.3;
-        const cumulativeLoss = years.map((y, i) => sedimentationRate * i);
-        const remainingCapacity = cumulativeLoss.map(cl => 100 - cl);
+<h2>Reservoir Location Map</h2>
+<div id="map"></div>
 
-        const nx = 50, ny = 50;
-        const X = Array.from({length: nx}, (_, i) => i * 2);
-        const Y = Array.from({length: ny}, (_, i) => i);
-        let Z_all_years = [];
-        for(let i=0;i<years.length;i++){
-            let lossFactor = 1 - sedimentationRate*i/100;
-            let Z = [];
-            for(let j=0;j<ny;j++){
-                let row = [];
-                for(let k=0;k<nx;k++){
-                    row.push(20*Math.exp(-((k-25)**2 + (j-25)**2)/200)*lossFactor);
-                }
-                Z.push(row);
-            }
-            Z_all_years.push(Z);
+<h2>Sedimentation Data Table</h2>
+<table id="dataTable">
+    <thead>
+        <tr><th>Year</th><th>Cumulative Loss (%)</th><th>Remaining Capacity (million m³)</th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+const years = Array.from({length:25},(_,i)=>2000+i);
+const sedimentationRate = 0.3;
+const cumulativeLoss = years.map((y,i)=>sedimentationRate*i);
+const remainingCapacity = cumulativeLoss.map(cl=>100-cl);
+
+const nx=50, ny=50;
+const X = Array.from({length:nx},(_,i)=>i*2);
+const Y = Array.from({length:ny},(_,i)=>i);
+let Z_all_years=[];
+for(let i=0;i<years.length;i++){
+    let lossFactor = 1 - sedimentationRate*i/100;
+    let Z=[];
+    for(let j=0;j<ny;j++){
+        let row=[];
+        for(let k=0;k<nx;k++){
+            row.push(20*Math.exp(-((k-25)**2 + (j-25)**2)/200)*lossFactor);
         }
+        Z.push(row);
+    }
+    Z_all_years.push(Z);
+}
 
-        // ===========================
-        // 3D Surface Plot
-        // ===========================
-        function update3DSurface(yearIndex){
-            const Z = Z_all_years[yearIndex];
-            Plotly.newPlot('surface3d', [{
-                z: Z,
-                x: X,
-                y: Y,
-                type: 'surface',
-                colorscale: 'Viridis'
-            }], {
-                title: `Reservoir 3D Surface - Year ${years[yearIndex]}`,
-                scene: {xaxis:{title:'Width'}, yaxis:{title:'Length'}, zaxis:{title:'Height'}}
-            });
-            document.getElementById("cumLoss").innerText = cumulativeLoss[yearIndex].toFixed(2);
-            document.getElementById("remVol").innerText = remainingCapacity[yearIndex].toFixed(2);
+function update3DSurface(yearIndex){
+    Plotly.newPlot('surface3d',[{
+        z: Z_all_years[yearIndex],
+        x: X,
+        y: Y,
+        type:'surface',
+        colorscale:'Viridis'
+    }],{
+        title:`Reservoir 3D Surface - Year ${years[yearIndex]}`,
+        scene:{xaxis:{title:'Width'},yaxis:{title:'Length'},zaxis:{title:'Height'}}
+    });
+    document.getElementById("cumLoss").innerText=cumulativeLoss[yearIndex].toFixed(2);
+    document.getElementById("remVol").innerText=remainingCapacity[yearIndex].toFixed(2);
+}
+update3DSurface(0);
+document.getElementById("yearSlider").addEventListener("input",e=>{
+    const yearIndex = e.target.value - 2000;
+    document.getElementById("yearLabel").innerText = e.target.value;
+    update3DSurface(yearIndex);
+    updateLossSurface(yearIndex);
+});
+
+const layers = Array.from({length:20},(_,i)=>i);
+let Z_layers=[];
+for(let y=0;y<years.length;y++){
+    let layerZ=[];
+    for(let l=0;l<layers.length;l++){
+        let row=[];
+        for(let i=0;i<nx;i++){
+            row.push(cumulativeLoss[y]*(l+1)/layers.length);
         }
+        layerZ.push(row);
+    }
+    Z_layers.push(layerZ);
+}
+function updateLossSurface(yearIndex){
+    Plotly.newPlot('lossSurface',[{
+        z: Z_layers[yearIndex],
+        x: X,
+        y: layers,
+        type:'surface',
+        colorscale:'Viridis'
+    }],{
+        scene:{xaxis:{title:'Width'},yaxis:{title:'Depth Layer'},zaxis:{title:'Loss (%)'}}
+    });
+    document.getElementById("depthYear").innerText=years[yearIndex];
+}
+updateLossSurface(0);
 
-        const slider = document.getElementById("yearSlider");
-        const label = document.getElementById("yearLabel");
-        slider.addEventListener("input", e => {
-            const yearIndex = e.target.value - 2000;
-            label.innerText = e.target.value;
-            update3DSurface(yearIndex);
-        });
+let barData=[];
+for(let i=0;i<years.length;i++){
+    barData.push({
+        x:[years[i]], y:[0], z:[cumulativeLoss[i]],
+        type:'scatter3d', mode:'markers',
+        marker:{size:5,color:'crimson'}
+    });
+}
+Plotly.newPlot('bar3D', barData, {
+    scene:{xaxis:{title:'Year'},yaxis:{title:'Dummy'},zaxis:{title:'Cumulative Loss (%)'}}
+});
 
-        update3DSurface(0); // initial plot
+Plotly.newPlot('linePlotLoss',[{x:years,y:cumulativeLoss,type:'scatter',mode:'lines+markers',marker:{color:'crimson'}}],
+    {title:'Cumulative Capacity Loss Over Time', xaxis:{title:'Year'}, yaxis:{title:'Cumulative Loss (%)'}});
 
-        // ===========================
-        // 2D Line Plots
-        // ===========================
-        Plotly.newPlot('linePlotLoss', [{
-            x: years, y: cumulativeLoss,
-            type: 'scatter', mode:'lines+markers', marker:{color:'crimson'}
-        }], {title:'Cumulative Capacity Loss Over Time', xaxis:{title:'Year'}, yaxis:{title:'Cumulative Loss (%)'}});
+Plotly.newPlot('linePlotRemaining',[{x:years,y:remainingCapacity,type:'scatter',mode:'lines+markers',marker:{color:'green'}}],
+    {title:'Remaining Capacity Over Time', xaxis:{title:'Year'}, yaxis:{title:'Remaining Capacity (million m³)'}});
 
-        Plotly.newPlot('linePlotRemaining', [{
-            x: years, y: remainingCapacity,
-            type: 'scatter', mode:'lines+markers', marker:{color:'green'}
-        }], {title:'Remaining Capacity Over Time', xaxis:{title:'Year'}, yaxis:{title:'Remaining Capacity (million m³)'}});
+const map=L.map('map').setView([35.0,-120.0],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'Map data © OpenStreetMap contributors'
+}).addTo(map);
+L.circle([35.0,-120.0],{radius:10000,color:'red',fill:true,fillColor:'orange'})
+    .addTo(map)
+    .bindPopup('Demo Reservoir<br>Sed Rate: 0.3%/yr');
 
-        // ===========================
-        // Leaflet Map
-        // ===========================
-        const map = L.map('map').setView([35.0, -120.0], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map data © OpenStreetMap contributors'
-        }).addTo(map);
-        L.circle([35.0, -120.0], {radius: 10000, color:'red', fill:true, fillColor:'orange'}).addTo(map)
-            .bindPopup('Demo Reservoir<br>Sed Rate: 0.3%/yr');
+const tbody = document.querySelector("#dataTable tbody");
+years.forEach((y,i)=>{
+    let tr=document.createElement("tr");
+    tr.innerHTML=`<td>${y}</td><td>${cumulativeLoss[i].toFixed(2)}</td><td>${remainingCapacity[i].toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+});
+</script>
 
-        // ===========================
-        // Populate Table
-        // ===========================
-        const tbody = document.querySelector("#dataTable tbody");
-        years.forEach((y,i)=>{
-            let tr = document.createElement("tr");
-            tr.innerHTML = `<td>${y}</td><td>${cumulativeLoss[i].toFixed(2)}</td><td>${remainingCapacity[i].toFixed(2)}</td>`;
-            tbody.appendChild(tr);
-        });
-    </script>
 </body>
 </html>
