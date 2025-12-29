@@ -4,13 +4,10 @@
 <meta charset="UTF-8">
 <title>Reservoir Sedimentation Demo</title>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     h1, h2 { color: #1f77b4; }
     .plot-container { margin-top: 30px; }
-    #map { height: 500px; margin-top: 20px; }
     table { border-collapse: collapse; margin-top: 20px; width: 100%; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #1f77b4; color: white; }
@@ -46,9 +43,6 @@
 
 <h2>Remaining Capacity Over Time</h2>
 <div id="linePlotRemaining" class="plot-container" style="height:400px;"></div>
-
-<h2>Reservoir Location Map</h2>
-<div id="map"></div>
 
 <h2>Sedimentation Data Table</h2>
 <table id="dataTable">
@@ -124,15 +118,6 @@ Plotly.newPlot('linePlotLoss',[{x:years,y:cumulativeLoss,type:'scatter',mode:'li
 
 Plotly.newPlot('linePlotRemaining',[{x:years,y:remainingCapacity,type:'scatter',mode:'lines+markers',marker:{color:'green'}}],
     {title:'Remaining Capacity Over Time', xaxis:{title:'Year'}, yaxis:{title:'Remaining Capacity (million m³)'}});
-
-// Map
-const map=L.map('map').setView([35.0,-120.0],6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'Map data © OpenStreetMap contributors'
-}).addTo(map);
-L.circle([35.0,-120.0],{radius:10000,color:'red',fill:true,fillColor:'orange'})
-    .addTo(map)
-    .bindPopup('Demo Reservoir<br>Sed Rate: 0.3%/yr');
 
 // Data table
 const tbody = document.querySelector("#dataTable tbody");
