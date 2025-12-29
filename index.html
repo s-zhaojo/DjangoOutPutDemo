@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Reservoir Sedimentation Demo </title>
+<title>Reservoir Sedimentation Demo</title>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -15,7 +15,12 @@
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #1f77b4; color: white; }
     .metrics span { font-weight: bold; font-size: 1.1em; }
-    input[type=range] { width: 100%; margin: 10px 0; }
+
+    /* Full-width sliders */
+    input[type=range] {
+        width: 100%;
+        margin: 10px 0;
+    }
 </style>
 </head>
 <body>
@@ -33,11 +38,8 @@
     <p>Remaining Volume (%): <span id="remVol">100.00</span></p>
 </div>
 
-<h2>3D Sedimentation Rate Over Time</h2>
-<div id="sr3D" style="height:600px;"></div>
-
-<h2>3D Cumulative Sedimentation per Year</h2>
-<div id="bar3D" style="height:600px;"></div>
+<h2>Sedimentation Rate Over Time</h2>
+<div id="srPlot" class="plot-container" style="height:400px;"></div>
 
 <h2>Cumulative Capacity Loss Over Time</h2>
 <div id="linePlotLoss" class="plot-container" style="height:400px;"></div>
@@ -51,17 +53,19 @@
 <h2>Sedimentation Data Table</h2>
 <table id="dataTable">
     <thead>
-        <tr><th>Year</th><th>Cumulative Loss (%)</th><th>Remaining Capacity (million m³)</th></tr>
+        <tr><th>Year</th><th>Cumulative Loss (%)</th><th>Remaining Capacity (million m³)</th><th>Sedimentation Rate (%)</th></tr>
     </thead>
     <tbody></tbody>
 </table>
 
 <script>
 const years = Array.from({length:25},(_,i)=>2000+i);
-const sedimentationRate = 0.3;
+const sedimentationRate = 0.3; // % per year
 const cumulativeLoss = years.map((y,i)=>sedimentationRate*i);
 const remainingCapacity = cumulativeLoss.map(cl=>100-cl);
+const srValues = Array.from({length:years.length},()=>sedimentationRate); // constant SR
 
+// 3D reservoir surface
 const nx=50, ny=50;
 const X = Array.from({length:nx},(_,i)=>i*2);
 const Y = Array.from({length:ny},(_,i)=>i);
@@ -92,46 +96,29 @@ function update3DSurface(yearIndex){
     });
     document.getElementById("cumLoss").innerText=cumulativeLoss[yearIndex].toFixed(2);
     document.getElementById("remVol").innerText=remainingCapacity[yearIndex].toFixed(2);
-    updateSR3D(yearIndex);
 }
-
-function updateSR3D(yearIndex){
-    // For demonstration, let's make a 3D surface representing SR across reservoir
-    const Z_sr = Z_all_years[yearIndex].map(row => row.map(val => val * sedimentationRate)); 
-    Plotly.newPlot('sr3D',[{
-        z: Z_sr,
-        x: X,
-        y: Y,
-        type:'surface',
-        colorscale:'Turbo'
-    }],{
-        title:`3D Sedimentation Rate - Year ${years[yearIndex]}`,
-        scene:{xaxis:{title:'Width'},yaxis:{title:'Length'},zaxis:{title:'SR (%)'}}
-    });
-}
-
 update3DSurface(0);
-
 document.getElementById("yearSlider").addEventListener("input",e=>{
     const yearIndex = e.target.value - 2000;
     document.getElementById("yearLabel").innerText = e.target.value;
     update3DSurface(yearIndex);
 });
 
-// 3D cumulative sedimentation per year
-let barData=[];
-for(let i=0;i<years.length;i++){
-    barData.push({
-        x:[years[i]], y:[0], z:[cumulativeLoss[i]],
-        type:'scatter3d', mode:'markers',
-        marker:{size:5,color:'crimson'}
-    });
-}
-Plotly.newPlot('bar3D', barData, {
-    scene:{xaxis:{title:'Year'},yaxis:{title:'Dummy'},zaxis:{title:'Cumulative Loss (%)'}}
+// Line plot for Sedimentation Rate over time
+Plotly.newPlot('srPlot',[{
+    x: years,
+    y: srValues,
+    type: 'scatter',
+    mode: 'lines+markers',
+    marker:{color:'orange'},
+    line:{width:2}
+}],{
+    title:'Sedimentation Rate Over Time',
+    xaxis:{title:'Year'},
+    yaxis:{title:'Sedimentation Rate (%)'}
 });
 
-// Line plots
+// Cumulative loss and remaining capacity
 Plotly.newPlot('linePlotLoss',[{x:years,y:cumulativeLoss,type:'scatter',mode:'lines+markers',marker:{color:'crimson'}}],
     {title:'Cumulative Capacity Loss Over Time', xaxis:{title:'Year'}, yaxis:{title:'Cumulative Loss (%)'}});
 
@@ -151,7 +138,7 @@ L.circle([35.0,-120.0],{radius:10000,color:'red',fill:true,fillColor:'orange'})
 const tbody = document.querySelector("#dataTable tbody");
 years.forEach((y,i)=>{
     let tr=document.createElement("tr");
-    tr.innerHTML=`<td>${y}</td><td>${cumulativeLoss[i].toFixed(2)}</td><td>${remainingCapacity[i].toFixed(2)}</td>`;
+    tr.innerHTML=`<td>${y}</td><td>${cumulativeLoss[i].toFixed(2)}</td><td>${remainingCapacity[i].toFixed(2)}</td><td>${srValues[i].toFixed(2)}</td>`;
     tbody.appendChild(tr);
 });
 </script>
