@@ -1,390 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>RECLAIM – World Map</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<style>
-body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f4f6f8;
-}
-
-h2 {
-    text-align: center;
-    margin: 10px 0;
-    color: #2c3e50;
-}
-
-/* Layout */
-#container {
-    display: flex;
-    height: calc(100vh - 50px);
-}
-
-/* Sidebar */
-#sidebar {
-    width: 360px;
-    overflow-y: auto;
-    background: #ffffff;
-    padding: 15px;
-    border-right: 1px solid #ddd;
-}
-
-#sidebar h3 {
-    margin-top: 15px;
-    font-size: 16px;
-    color: #34495e;
-}
-
-label {
-    display: block;
-    margin-top: 10px;
-    font-size: 13px;
-}
-
-input, select {
-    padding: 8px;
-    margin-top: 4px;
-    font-size: 13px;
-    box-sizing: border-box;
-}
-
-input[type=number] {
-    width: 50%;
-}
-
-.required::after {
-    content: " *";
-    color: red;
-}
-
-/* Slider container */
-.slider-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-    width: 100%;
-}
-
-.slider-container label {
-    min-width: 80px;
-}
-
-.slider-container input[type=range] {
-    flex: 1;
-    -webkit-appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background: #ddd;
-    outline: none;
-}
-
-.slider-container input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #3498db;
-    cursor: pointer;
-    border: none;
-}
-
-.slider-container input[type=range]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #3498db;
-    cursor: pointer;
-    border: none;
-}
-
-/* Map */
-#map {
-    flex: 1;
-}
-
-/* Search */
-#search {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-}
-
-#results {
-    max-height: 200px;
-    overflow-y: auto;
-    background: white;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    margin-top: 2px;
-}
-
-.result-item {
-    padding: 8px;
-    cursor: pointer;
-}
-
-.result-item:hover {
-    background: #3498db;
-    color: white;
-}
-
-/* Submit Button */
-#submit-btn {
-    width: 100%;
-    background-color: #27ae60;
-    color: white;
-    font-size: 16px;
-    padding: 12px;
-    margin-top: 15px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    opacity: 0.5;
-}
-
-#submit-btn.enabled {
-    opacity: 1;
-    cursor: pointer;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Reservoir Sedimentation Demo 🌊🏞️</title>
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1, h2 { color: #1f77b4; }
+        #map { height: 500px; margin-top: 20px; }
+        .plot-container { margin-top: 30px; }
+    </style>
 </head>
-
 <body>
+    <h1>Reservoir Sedimentation Visualization Demo 🌊🏞️</h1>
 
-<h2>RECLAIM – Global Reservoir Tool 🌍</h2>
+    <!-- 3D Reservoir Surface -->
+    <h2>3D Reservoir Sedimentation Over Time (Interactive)</h2>
+    <input type="range" id="yearSlider" min="2000" max="2024" value="2000">
+    <span id="yearLabel">2000</span>
+    <div id="surface3d" class="plot-container" style="height:600px;"></div>
 
-<div id="container">
+    <!-- Static Metrics -->
+    <h2>Sedimentation Metrics</h2>
+    <p>Cumulative Loss (%): <span id="cumLoss">0.00</span></p>
+    <p>Remaining Volume (%): <span id="remVol">100.00</span></p>
 
-<div id="sidebar">
+    <!-- 2D Plots -->
+    <h2>Cumulative Capacity Loss Over Time</h2>
+    <div id="linePlotLoss" class="plot-container" style="height:400px;"></div>
 
-<h3>Search Reservoir / Major River Basin (I4) <span style="color:red">*</span></h3>
-<input id="search" type="text" placeholder="Search reservoir or basin..." required>
-<div id="results"></div>
+    <h2>Remaining Capacity Over Time</h2>
+    <div id="linePlotRemaining" class="plot-container" style="height:400px;"></div>
 
-<h3>Observation Period</h3>
-<div class="slider-container">
-    <label class="required">Start Year (I1, year)</label>
-    <input type="range" id="start-year-slider" min="1900" max="2025" value="2000">
-    <input type="number" id="start-year-input" min="1900" max="2025" value="2000">
-</div>
-<div class="slider-container">
-    <label class="required">End Year (I2, year)</label>
-    <input type="range" id="end-year-slider" min="1900" max="2025" value="2020">
-    <input type="number" id="end-year-input" min="1900" max="2025" value="2020">
-</div>
+    <!-- Map -->
+    <h2>Reservoir Location Map</h2>
+    <div id="map"></div>
 
-<h3>Build Year</h3>
-<div class="slider-container">
-    <label class="required">Build Year (I3, year)</label>
-    <input type="range" id="build-year-slider" min="1900" max="2025" value="2010">
-    <input type="number" id="build-year-input" min="1900" max="2025" value="2010">
-</div>
+    <!-- Table -->
+    <h2>Sedimentation Data Table</h2>
+    <table border="1" cellpadding="5" cellspacing="0" id="dataTable">
+        <thead>
+            <tr><th>Year</th><th>Cumulative Loss (%)</th><th>Remaining Capacity (million m³)</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
-<h3>Location</h3>
-<label class="required">Dam Latitude (I5, °)</label>
-<input id="lat" type="number" step="any" required>
+    <script>
+        // ===========================
+        // Simulated Reservoir Data
+        // ===========================
+        const years = Array.from({length: 25}, (_, i) => 2000 + i);
+        const sedimentationRate = 0.3;
+        const cumulativeLoss = years.map((y, i) => sedimentationRate * i);
+        const remainingCapacity = cumulativeLoss.map(cl => 100 - cl);
 
-<label class="required">Dam Longitude (I6, °)</label>
-<input id="lon" type="number" step="any" required>
-
-<h3>Reservoir Properties</h3>
-<label class="required">Original Built Capacity (I7, million cubic
-meter (mcm))</label>
-<input id="I7" type="number" required>
-
-<label>Dam Height (I8, m)</label>
-<input type="number">
-
-<label>Bathymetry / AEC Curve (I9, depth–area–capacity, CSV)</label>
-<input type="file" accept=".csv">
-
-<label class="required">Reservoir Geometry (I10, polygon, GEOJSON/ZIP)</label>
-<input id="I10" type="file" accept=".geojson,.zip" required>
-
-<h3>Catchment</h3>
-<label>Differential Catchment Area (I11, km²)</label>
-<input type="number">
-
-<label class="required">Catchment Geometry (I12, polygon, GEOJSON/ZIP)</label>
-<input id="I12" type="file" accept=".geojson,.zip" required>
-
-<h3>Time Series Inputs (Optional)</h3>
-<label>Inflow (I13, m³/day, CSV)</label>
-<input type="file" accept=".csv">
-
-<label>Outflow (I14, m³/day, CSV)</label>
-<input type="file" accept=".csv">
-
-<label>Surface Area (I15, km², CSV)</label>
-<input type="file" accept=".csv">
-
-<label>Evaporation (I16, mm/day, CSV)</label>
-<input type="file" accept=".csv">
-
-<label>NSSC1 (I17, DL, CSV)</label>
-<input type="file" accept=".csv">
-
-<label>NSSC2 (I18, DL, CSV)</label>
-<input type="file" accept=".csv">
-
-<h3>Meteorology (Optional)</h3>
-<label>Precipitation (I19, mm/day, CSV)</label>
-<input type="file" accept=".csv">
-
-<label>Temperature Min/Max (I20, °C, CSV)</label>
-<input type="file" accept=".csv">
-
-<label>Wind Speed (I21, m/s, CSV)</label>
-<input type="file" accept=".csv">
-
-<!-- Submit Button -->
-<button id="submit-btn" disabled>Submit Reservoir Data</button>
-
-</div>
-
-<div id="map"></div>
-
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script>
-// Map setup
-const map = L.map('map').setView([20, 0], 2);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-let marker;
-
-// Map click to set lat/lon
-map.on('click', e => {
-    document.getElementById("lat").value = e.latlng.lat.toFixed(6);
-    document.getElementById("lon").value = e.latlng.lng.toFixed(6);
-    if (marker) map.removeLayer(marker);
-    marker = L.marker(e.latlng).addTo(map);
-    checkFormCompletion();
-});
-
-// Search autocomplete (I4)
-let selectedReservoir = null;
-const searchInput = document.getElementById("search");
-const resultsDiv = document.getElementById("results");
-searchInput.addEventListener("input", async () => {
-    const q = searchInput.value.trim();
-    resultsDiv.innerHTML = "";
-    if (q.length < 2) return;
-    const res = await fetch(`/api/reservoirs/?q=${q}`);
-    const data = await res.json();
-    data.forEach(r => {
-        const d = document.createElement("div");
-        d.className = "result-item";
-        d.textContent = r.name;
-        d.onclick = () => {
-            selectedReservoir = r;             
-            searchInput.value = r.name;        
-            document.getElementById("lat").value = r.lat;
-            document.getElementById("lon").value = r.lon;
-            resultsDiv.innerHTML = "";         
-            checkFormCompletion();
-        };
-        resultsDiv.appendChild(d);
-    });
-});
-
-// Slider linking
-function linkSliderAndInput(slider, input) {
-    slider.addEventListener('input', () => {
-        input.value = slider.value;
-        adjustYears(slider.id);
-        checkFormCompletion();
-    });
-    input.addEventListener('input', () => {
-        slider.value = input.value;
-        adjustYears(slider.id);
-        checkFormCompletion();
-    });
-}
-
-linkSliderAndInput(document.getElementById('start-year-slider'), document.getElementById('start-year-input'));
-linkSliderAndInput(document.getElementById('end-year-slider'), document.getElementById('end-year-input'));
-linkSliderAndInput(document.getElementById('build-year-slider'), document.getElementById('build-year-input'));
-
-const startSlider = document.getElementById('start-year-slider');
-const endSlider = document.getElementById('end-year-slider');
-const buildSlider = document.getElementById('build-year-slider');
-
-function adjustYears(changedId) {
-    let build = parseInt(buildSlider.value);
-    let start = parseInt(startSlider.value);
-    let end = parseInt(endSlider.value);
-
-    if (changedId === 'build-year-slider' || changedId === 'build-year-input') {
-        if (start < build) { start = build; startSlider.value = start; document.getElementById('start-year-input').value = start; }
-        if (end < build) { end = build; endSlider.value = end; document.getElementById('end-year-input').value = end; }
-    } else if (changedId === 'start-year-slider' || changedId === 'start-year-input') {
-        if (start < build) { build = start; buildSlider.value = build; document.getElementById('build-year-input').value = build; }
-        if (start > end) { end = start; endSlider.value = end; document.getElementById('end-year-input').value = end; }
-    } else if (changedId === 'end-year-slider' || changedId === 'end-year-input') {
-        if (end < build) { build = end; buildSlider.value = build; document.getElementById('build-year-input').value = build; }
-        if (end < start) { start = end; startSlider.value = start; document.getElementById('start-year-input').value = start; }
-    }
-}
-
-// Submit button logic
-const submitBtn = document.getElementById("submit-btn");
-const requiredFields = ['start-year-input','end-year-input','build-year-input','search','lat','lon','I7','I10','I12'];
-
-function checkFormCompletion() {
-    let enabled = true;
-    requiredFields.forEach(id => {
-        const el = document.getElementById(id);
-        if(!el) enabled = false;
-        else if(el.type === 'file') {
-            if(!el.files || el.files.length === 0) enabled = false;
-        } else if(el.type === 'text' || el.type === 'number') {
-            if(!el.value) enabled = false;
+        const nx = 50, ny = 50;
+        const X = Array.from({length: nx}, (_, i) => i * 2);
+        const Y = Array.from({length: ny}, (_, i) => i);
+        let Z_all_years = [];
+        for(let i=0;i<years.length;i++){
+            let lossFactor = 1 - sedimentationRate*i/100;
+            let Z = [];
+            for(let j=0;j<ny;j++){
+                let row = [];
+                for(let k=0;k<nx;k++){
+                    row.push(20*Math.exp(-((k-25)**2 + (j-25)**2)/200)*lossFactor);
+                }
+                Z.push(row);
+            }
+            Z_all_years.push(Z);
         }
-    });
 
-    if(enabled){
-        submitBtn.disabled = false;
-        submitBtn.classList.add("enabled");
-    } else {
-        submitBtn.disabled = true;
-        submitBtn.classList.remove("enabled");
-    }
-}
-
-// Add event listeners to required fields
-requiredFields.forEach(id => {
-    const el = document.getElementById(id);
-    if(el){
-        if(el.type === 'file'){
-            el.addEventListener('change', checkFormCompletion);
-        } else {
-            el.addEventListener('input', checkFormCompletion);
+        // ===========================
+        // 3D Surface Plot
+        // ===========================
+        function update3DSurface(yearIndex){
+            const Z = Z_all_years[yearIndex];
+            Plotly.newPlot('surface3d', [{
+                z: Z,
+                x: X,
+                y: Y,
+                type: 'surface',
+                colorscale: 'Viridis'
+            }], {
+                title: `Reservoir 3D Surface - Year ${years[yearIndex]}`,
+                scene: {xaxis:{title:'Width'}, yaxis:{title:'Length'}, zaxis:{title:'Height'}}
+            });
+            document.getElementById("cumLoss").innerText = cumulativeLoss[yearIndex].toFixed(2);
+            document.getElementById("remVol").innerText = remainingCapacity[yearIndex].toFixed(2);
         }
-    }
-});
 
-// Submit button click: zoom to selected reservoir if any
-submitBtn.addEventListener('click', () => {
-    if(selectedReservoir){
-        map.setView([selectedReservoir.lat, selectedReservoir.lon], 11);
-        if(marker) map.removeLayer(marker);
-        marker = L.marker([selectedReservoir.lat, selectedReservoir.lon]).addTo(map);
-    }
-    submitBtn.disabled = true;
-    submitBtn.classList.remove("enabled");
-    alert("Reservoir data submitted!"); // placeholder
-});
-</script>
+        const slider = document.getElementById("yearSlider");
+        const label = document.getElementById("yearLabel");
+        slider.addEventListener("input", e => {
+            const yearIndex = e.target.value - 2000;
+            label.innerText = e.target.value;
+            update3DSurface(yearIndex);
+        });
 
+        update3DSurface(0); // initial plot
+
+        // ===========================
+        // 2D Line Plots
+        // ===========================
+        Plotly.newPlot('linePlotLoss', [{
+            x: years, y: cumulativeLoss,
+            type: 'scatter', mode:'lines+markers', marker:{color:'crimson'}
+        }], {title:'Cumulative Capacity Loss Over Time', xaxis:{title:'Year'}, yaxis:{title:'Cumulative Loss (%)'}});
+
+        Plotly.newPlot('linePlotRemaining', [{
+            x: years, y: remainingCapacity,
+            type: 'scatter', mode:'lines+markers', marker:{color:'green'}
+        }], {title:'Remaining Capacity Over Time', xaxis:{title:'Year'}, yaxis:{title:'Remaining Capacity (million m³)'}});
+
+        // ===========================
+        // Leaflet Map
+        // ===========================
+        const map = L.map('map').setView([35.0, -120.0], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data © OpenStreetMap contributors'
+        }).addTo(map);
+        L.circle([35.0, -120.0], {radius: 10000, color:'red', fill:true, fillColor:'orange'}).addTo(map)
+            .bindPopup('Demo Reservoir<br>Sed Rate: 0.3%/yr');
+
+        // ===========================
+        // Populate Table
+        // ===========================
+        const tbody = document.querySelector("#dataTable tbody");
+        years.forEach((y,i)=>{
+            let tr = document.createElement("tr");
+            tr.innerHTML = `<td>${y}</td><td>${cumulativeLoss[i].toFixed(2)}</td><td>${remainingCapacity[i].toFixed(2)}</td>`;
+            tbody.appendChild(tr);
+        });
+    </script>
 </body>
 </html>
