@@ -15,17 +15,12 @@
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #1f77b4; color: white; }
     .metrics span { font-weight: bold; font-size: 1.1em; }
-
-    /* Make sliders full width */
-    input[type=range] {
-        width: 100%;
-        margin: 10px 0;
-    }
+    input[type=range] { width: 100%; margin: 10px 0; }
 </style>
 </head>
 <body>
 
-<h1>Reservoir Sedimentation Visualization Demo </h1>
+<h1>Reservoir Sedimentation Visualization Demo</h1>
 
 <h2>3D Reservoir Surface Over Time</h2>
 <input type="range" id="yearSlider" min="2000" max="2024" value="2000">
@@ -38,10 +33,8 @@
     <p>Remaining Volume (%): <span id="remVol">100.00</span></p>
 </div>
 
-<h2>3D Sedimentation Loss by Depth Layers</h2>
-<input type="range" id="depthSlider" min="0" max="24" value="0">
-<span id="depthYear">2000</span>
-<div id="lossSurface" style="height:600px;"></div>
+<h2>3D Sedimentation Rate Over Time</h2>
+<div id="sr3D" style="height:600px;"></div>
 
 <h2>3D Cumulative Sedimentation per Year</h2>
 <div id="bar3D" style="height:600px;"></div>
@@ -99,42 +92,33 @@ function update3DSurface(yearIndex){
     });
     document.getElementById("cumLoss").innerText=cumulativeLoss[yearIndex].toFixed(2);
     document.getElementById("remVol").innerText=remainingCapacity[yearIndex].toFixed(2);
+    updateSR3D(yearIndex);
 }
+
+function updateSR3D(yearIndex){
+    // For demonstration, let's make a 3D surface representing SR across reservoir
+    const Z_sr = Z_all_years[yearIndex].map(row => row.map(val => val * sedimentationRate)); 
+    Plotly.newPlot('sr3D',[{
+        z: Z_sr,
+        x: X,
+        y: Y,
+        type:'surface',
+        colorscale:'Turbo'
+    }],{
+        title:`3D Sedimentation Rate - Year ${years[yearIndex]}`,
+        scene:{xaxis:{title:'Width'},yaxis:{title:'Length'},zaxis:{title:'SR (%)'}}
+    });
+}
+
 update3DSurface(0);
+
 document.getElementById("yearSlider").addEventListener("input",e=>{
     const yearIndex = e.target.value - 2000;
     document.getElementById("yearLabel").innerText = e.target.value;
     update3DSurface(yearIndex);
-    updateLossSurface(yearIndex);
 });
 
-const layers = Array.from({length:20},(_,i)=>i);
-let Z_layers=[];
-for(let y=0;y<years.length;y++){
-    let layerZ=[];
-    for(let l=0;l<layers.length;l++){
-        let row=[];
-        for(let i=0;i<nx;i++){
-            row.push(cumulativeLoss[y]*(l+1)/layers.length);
-        }
-        layerZ.push(row);
-    }
-    Z_layers.push(layerZ);
-}
-function updateLossSurface(yearIndex){
-    Plotly.newPlot('lossSurface',[{
-        z: Z_layers[yearIndex],
-        x: X,
-        y: layers,
-        type:'surface',
-        colorscale:'Viridis'
-    }],{
-        scene:{xaxis:{title:'Width'},yaxis:{title:'Depth Layer'},zaxis:{title:'Loss (%)'}}
-    });
-    document.getElementById("depthYear").innerText=years[yearIndex];
-}
-updateLossSurface(0);
-
+// 3D cumulative sedimentation per year
 let barData=[];
 for(let i=0;i<years.length;i++){
     barData.push({
@@ -147,12 +131,14 @@ Plotly.newPlot('bar3D', barData, {
     scene:{xaxis:{title:'Year'},yaxis:{title:'Dummy'},zaxis:{title:'Cumulative Loss (%)'}}
 });
 
+// Line plots
 Plotly.newPlot('linePlotLoss',[{x:years,y:cumulativeLoss,type:'scatter',mode:'lines+markers',marker:{color:'crimson'}}],
     {title:'Cumulative Capacity Loss Over Time', xaxis:{title:'Year'}, yaxis:{title:'Cumulative Loss (%)'}});
 
 Plotly.newPlot('linePlotRemaining',[{x:years,y:remainingCapacity,type:'scatter',mode:'lines+markers',marker:{color:'green'}}],
     {title:'Remaining Capacity Over Time', xaxis:{title:'Year'}, yaxis:{title:'Remaining Capacity (million m³)'}});
 
+// Map
 const map=L.map('map').setView([35.0,-120.0],6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'Map data © OpenStreetMap contributors'
@@ -161,6 +147,7 @@ L.circle([35.0,-120.0],{radius:10000,color:'red',fill:true,fillColor:'orange'})
     .addTo(map)
     .bindPopup('Demo Reservoir<br>Sed Rate: 0.3%/yr');
 
+// Data table
 const tbody = document.querySelector("#dataTable tbody");
 years.forEach((y,i)=>{
     let tr=document.createElement("tr");
